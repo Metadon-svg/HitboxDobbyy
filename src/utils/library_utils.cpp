@@ -1,9 +1,9 @@
 #include "library_utils.h"
-#include <unistd.h>
+#include <dlfcn.h>
 #include <stdio.h>
+#include <string.h>
 
 bool Utils::isLibraryLoaded(const char* libName) {
-    Dl_info info;
     void* handle = dlopen(libName, RTLD_LAZY);
     if (handle) {
         dlclose(handle);

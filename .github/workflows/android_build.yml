@@ -23,6 +23,7 @@ jobs:
         sdkmanager "ndk;25.2.9519653"
         echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
 
+<<<<<<< HEAD
     - name: Download prebuilt Dobby
       run: |
         mkdir -p $GITHUB_WORKSPACE/libs/arm64-v8a
@@ -65,6 +66,8 @@ jobs:
           sed -i 's/libdobby.a//g' $GITHUB_WORKSPACE/CMakeLists.txt 2>/dev/null || true
         fi
 
+=======
+>>>>>>> 6c52224 (fix: dobby stub, uintptr_t, static methods)
     - name: Build Hitbox Module
       run: |
         mkdir -p build && cd build
@@ -76,6 +79,8 @@ jobs:
         make -j$(nproc) 2>&1
 
         ls -la libhitbox_module.so || (echo "Module build failed!" && exit 1)
+
+        ls -la libhitbox_module.so
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4

@@ -13,7 +13,13 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_library(hitbox_module SHARED ${SOURCES})
 
 target_include_directories(hitbox_module PRIVATE include)
-target_link_directories(hitbox_module PRIVATE libs/${CMAKE_ANDROID_ARCH_ABI})
-target_link_libraries(hitbox_module PRIVATE dobby log dl)
+
+# === Dobby: раскомментировать когда будет libdobby.a ===
+# target_link_libraries(hitbox_module PRIVATE 
+#     ${CMAKE_CURRENT_SOURCE_DIR}/libs/${CMAKE_ANDROID_ARCH_ABI}/libdobby.a
+#     log dl
+# )
+# === Пока без Dobby ===
+target_link_libraries(hitbox_module PRIVATE log dl)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -fvisibility=hidden")
