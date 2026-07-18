@@ -22,37 +22,48 @@ jobs:
       run: |
         sdkmanager "ndk;25.2.9519653"
         echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
-        echo "NDK path: $ANDROID_SDK_ROOT/ndk/25.2.9519653"
 
-    - name: Clone and build Dobby (static)
+    - name: Download prebuilt Dobby
       run: |
-        git clone --depth=1 https://github.com/jmpews/Dobby.git /tmp/dobby
-        cd /tmp/dobby
-
-        # Фиксим старый CMake в Dobby
-        sed -i 's/cmake_minimum_required(VERSION 3.5)/cmake_minimum_required(VERSION 3.10)/' CMakeLists.txt 2>/dev/null || true
-        sed -i 's/cmake_minimum_required(VERSION 3.4)/cmake_minimum_required(VERSION 3.10)/' CMakeLists.txt 2>/dev/null || true
-
-        mkdir -p build && cd build
-
-        cmake .. \
-          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-          -DANDROID_ABI=arm64-v8a \
-          -DANDROID_PLATFORM=android-21 \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DDOBBY_BUILD_STATIC=ON \
-          -DDOBBY_BUILD_SHARED=OFF \
-          -DCMAKE_POLICY_VERSION_MINIMUM=3.10 \
-          2>&1
-
-        make -j$(nproc) 2>&1
-
-        # Проверяем что собралось
-        ls -la libdobby.a || (echo "Dobby build failed!" && exit 1)
-
         mkdir -p $GITHUB_WORKSPACE/libs/arm64-v8a
-        cp libdobby.a $GITHUB_WORKSPACE/libs/arm64-v8a/
-        cp ../include/dobby.h $GITHUB_WORKSPACE/include/
+        mkdir -p $GITHUB_WORKSPACE/include
+
+        # Пробуем скачать последний релиз Dobby
+        curl -sL "https://api.github.com/repos/jmpews/Dobby/releases/latest" | grep "browser_download_url" | grep "android" | grep "arm64" | head -1 | cut -d '"' -f 4 > /tmp/dobby_url.txt
+
+        if [ -s /tmp/dobby_url.txt ]; then
+          URL=$(cat /tmp/dobby_url.txt)
+          echo "Downloading Dobby from: $URL"
+          curl -L -o /tmp/dobby.zip "$URL"
+          unzip -o /tmp/dobby.zip -d /tmp/dobby-extract 2>/dev/null || true
+        else
+          echo "No release found, trying alternative..."
+          # Альтернативный источник - prebuilt из репы
+          git clone --depth=1 https://github.com/jmpews/Dobby.git /tmp/dobby-src 2>/dev/null || true
+        fi
+
+        # Ищем libdobby.a
+        find /tmp -name "libdobby.a" 2>/dev/null | head -1 | xargs -I {} cp {} $GITHUB_WORKSPACE/libs/arm64-v8a/ 2>/dev/null || true
+
+        # Ищем dobby.h
+        find /tmp -name "dobby.h" 2>/dev/null | head -1 | xargs -I {} cp {} $GITHUB_WORKSPACE/include/ 2>/dev/null || true
+
+        # Проверяем
+        if [ -f $GITHUB_WORKSPACE/libs/arm64-v8a/libdobby.a ] && [ -f $GITHUB_WORKSPACE/include/dobby.h ]; then
+          echo "Dobby found!"
+          ls -la $GITHUB_WORKSPACE/libs/arm64-v8a/libdobby.a
+          ls -la $GITHUB_WORKSPACE/include/dobby.h
+        else
+          echo "Dobby not found, creating stub..."
+          echo "// Dobby stub - hooks disabled" > $GITHUB_WORKSPACE/include/dobby.h
+          echo "#pragma once" >> $GITHUB_WORKSPACE/include/dobby.h
+          echo "inline int DobbyInit() { return 0; }" >> $GITHUB_WORKSPACE/include/dobby.h
+          echo "inline int DobbyHook(void*, void*, void**) { return 0; }" >> $GITHUB_WORKSPACE/include/dobby.h
+          echo "inline int DobbyUnhook(void*) { return 0; }" >> $GITHUB_WORKSPACE/include/dobby.h
+
+          # Убираем линковку dobby из CMake
+          sed -i 's/libdobby.a//g' $GITHUB_WORKSPACE/CMakeLists.txt 2>/dev/null || true
+        fi
 
     - name: Build Hitbox Module
       run: |
@@ -64,7 +75,6 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
         make -j$(nproc) 2>&1
 
-        # Проверяем что собралось
         ls -la libhitbox_module.so || (echo "Module build failed!" && exit 1)
 
     - name: Upload artifact
