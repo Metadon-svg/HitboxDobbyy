@@ -2,96 +2,43 @@ name: Build Hitbox Module
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v4
+      - name: Checkout project
+        uses: actions/checkout@v4
 
-    - name: Setup Android NDK
-      uses: android-actions/setup-android@v3
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
 
-    - name: Install NDK
-      run: |
-        sdkmanager "ndk;25.2.9519653"
-        echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+      - name: Install NDK
+        run: |
+          sdkmanager "ndk;25.2.9519653"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
 
-<<<<<<< HEAD
-    - name: Download prebuilt Dobby
-      run: |
-        mkdir -p $GITHUB_WORKSPACE/libs/arm64-v8a
-        mkdir -p $GITHUB_WORKSPACE/include
+      - name: Build Hitbox Module
+        run: |
+          mkdir -p build && cd build
+          cmake ..             -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-21             -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          ls -la libhitbox_module.so
 
-        # Пробуем скачать последний релиз Dobby
-        curl -sL "https://api.github.com/repos/jmpews/Dobby/releases/latest" | grep "browser_download_url" | grep "android" | grep "arm64" | head -1 | cut -d '"' -f 4 > /tmp/dobby_url.txt
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hitbox_module-arm64
+          path: build/libhitbox_module.so
 
-        if [ -s /tmp/dobby_url.txt ]; then
-          URL=$(cat /tmp/dobby_url.txt)
-          echo "Downloading Dobby from: $URL"
-          curl -L -o /tmp/dobby.zip "$URL"
-          unzip -o /tmp/dobby.zip -d /tmp/dobby-extract 2>/dev/null || true
-        else
-          echo "No release found, trying alternative..."
-          # Альтернативный источник - prebuilt из репы
-          git clone --depth=1 https://github.com/jmpews/Dobby.git /tmp/dobby-src 2>/dev/null || true
-        fi
-
-        # Ищем libdobby.a
-        find /tmp -name "libdobby.a" 2>/dev/null | head -1 | xargs -I {} cp {} $GITHUB_WORKSPACE/libs/arm64-v8a/ 2>/dev/null || true
-
-        # Ищем dobby.h
-        find /tmp -name "dobby.h" 2>/dev/null | head -1 | xargs -I {} cp {} $GITHUB_WORKSPACE/include/ 2>/dev/null || true
-
-        # Проверяем
-        if [ -f $GITHUB_WORKSPACE/libs/arm64-v8a/libdobby.a ] && [ -f $GITHUB_WORKSPACE/include/dobby.h ]; then
-          echo "Dobby found!"
-          ls -la $GITHUB_WORKSPACE/libs/arm64-v8a/libdobby.a
-          ls -la $GITHUB_WORKSPACE/include/dobby.h
-        else
-          echo "Dobby not found, creating stub..."
-          echo "// Dobby stub - hooks disabled" > $GITHUB_WORKSPACE/include/dobby.h
-          echo "#pragma once" >> $GITHUB_WORKSPACE/include/dobby.h
-          echo "inline int DobbyInit() { return 0; }" >> $GITHUB_WORKSPACE/include/dobby.h
-          echo "inline int DobbyHook(void*, void*, void**) { return 0; }" >> $GITHUB_WORKSPACE/include/dobby.h
-          echo "inline int DobbyUnhook(void*) { return 0; }" >> $GITHUB_WORKSPACE/include/dobby.h
-
-          # Убираем линковку dobby из CMake
-          sed -i 's/libdobby.a//g' $GITHUB_WORKSPACE/CMakeLists.txt 2>/dev/null || true
-        fi
-
-=======
->>>>>>> 6c52224 (fix: dobby stub, uintptr_t, static methods)
-    - name: Build Hitbox Module
-      run: |
-        mkdir -p build && cd build
-        cmake .. \
-          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-          -DANDROID_ABI=arm64-v8a \
-          -DANDROID_PLATFORM=android-21 \
-          -DCMAKE_BUILD_TYPE=Release
-        make -j$(nproc) 2>&1
-
-        ls -la libhitbox_module.so || (echo "Module build failed!" && exit 1)
-
-        ls -la libhitbox_module.so
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: hitbox_module-arm64
-        path: build/libhitbox_module.so
-
-    - name: Upload to Release (on tag)
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v2
-      with:
-        files: build/libhitbox_module.so
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/libhitbox_module.so
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
