@@ -1,0 +1,11 @@
+#pragma once
+
+class HitboxPatcher {
+public:
+    static bool Apply();
+    static bool Restore();
+
+private:
+    static void PatchHitbox(uintptr_t offset, float baseValue, float multiplier);
+    static bool s_patched;
+};
