@@ -16,9 +16,9 @@ target_include_directories(hitbox_module PRIVATE include)
 
 # === Dobby: раскомментировать когда будет libdobby.a ===
 # target_link_libraries(hitbox_module PRIVATE 
-#     ${CMAKE_CURRENT_SOURCE_DIR}/libs/${CMAKE_ANDROID_ARCH_ABI}/libdobby.a
-#     log dl
-# )
+     ${CMAKE_CURRENT_SOURCE_DIR}/libs/${CMAKE_ANDROID_ARCH_ABI}/libdobby.a
+     log dl
+ )
 # === Пока без Dobby ===
 target_link_libraries(hitbox_module PRIVATE log dl)
 
