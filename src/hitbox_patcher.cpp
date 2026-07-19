@@ -15,7 +15,7 @@ void HitboxPatcher::PatchHitbox(uintptr_t offset, float baseValue, float multipl
 bool HitboxPatcher::Apply() {
     if (s_patched) return true;
 
-    const float multiplier = 2.1f;
+    const float multiplier = 2f;
 
     PatchHitbox(Offsets::HEAD,       0.15f, multiplier);
     PatchHitbox(Offsets::TORSO_1,    0.20f, multiplier);
