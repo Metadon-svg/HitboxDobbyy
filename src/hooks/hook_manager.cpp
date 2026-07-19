@@ -4,12 +4,13 @@ bool HookManager::s_initialized = false;
 
 bool HookManager::Init() {
     if (s_initialized) return true;
-    s_initialized = (DobbyInit() == 0);
-    return s_initialized;
+    // DobbyInit отсутствует в этой версии libdobby.a
+    s_initialized = true;
+    return true;
 }
 
 bool HookManager::Hook(uintptr_t target, void* replacement, void** original) {
-    if (!s_initialized && !Init()) return false;
+    if (!s_initialized) return false;
     return DobbyHook((DobbyAddr)target, (DobbyAddr)replacement, (DobbyAddr*)original) == 0;
 }
 
